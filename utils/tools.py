@@ -291,27 +291,14 @@ def check_url_ipv_type(url):
     )
 
 
-def check_by_url_keywords_blacklist(url):
+def check_url_by_keywords(url, keywords=None):
     """
-    Check by URL blacklist keywords
+    Check by URL keywords
     """
-    return not any(keyword in url for keyword in config.url_keywords_blacklist)
-
-
-def check_url_by_patterns(url):
-    """
-    Check the url by patterns
-    """
-    return check_url_ipv_type(url) and check_by_url_keywords_blacklist(url)
-
-
-def filter_urls_by_patterns(urls):
-    """
-    Filter urls by patterns
-    """
-    urls = [url for url in urls if check_url_ipv_type(url)]
-    urls = [url for url in urls if check_by_url_keywords_blacklist(url)]
-    return urls
+    if not keywords:
+        return True
+    else:
+        return any(keyword in url for keyword in keywords)
 
 
 def merge_objects(*objects):
@@ -542,32 +529,48 @@ def get_name_url(content, pattern, multiline=False, check_url=True):
     return channels
 
 
-def get_whitelist_urls():
+def get_real_path(path) -> str:
     """
-    Get the whitelist urls
+    Get the real path
     """
-    whitelist_file = resource_path(constants.whitelist_path)
+    dir_path, file = os.path.split(path)
+    user_real_path = os.path.join(dir_path, 'user_' + file)
+    real_path = user_real_path if os.path.exists(user_real_path) else path
+    return real_path
+
+
+def get_urls_from_file(path: str) -> list:
+    """
+    Get the urls from file
+    """
+    real_path = get_real_path(resource_path(path))
     urls = []
     url_pattern = constants.url_pattern
-    if os.path.exists(whitelist_file):
-        with open(whitelist_file, "r", encoding="utf-8") as f:
+    if os.path.exists(real_path):
+        with open(real_path, "r", encoding="utf-8") as f:
             for line in f:
+                line = line.strip()
+                if line.startswith("#"):
+                    continue
                 match = re.search(url_pattern, line)
                 if match:
                     urls.append(match.group().strip())
     return urls
 
 
-def get_whitelist_name_urls():
+def get_name_urls_from_file(path: str) -> dict[str, list]:
     """
-    Get the whitelist name urls
+    Get the name and urls from file
     """
-    whitelist_file = resource_path(constants.whitelist_path)
+    real_path = get_real_path(resource_path(path))
     name_urls = defaultdict(list)
     txt_pattern = constants.txt_pattern
-    if os.path.exists(whitelist_file):
-        with open(whitelist_file, "r", encoding="utf-8") as f:
+    if os.path.exists(real_path):
+        with open(real_path, "r", encoding="utf-8") as f:
             for line in f:
+                line = line.strip()
+                if line.startswith("#"):
+                    continue
                 name_url = get_name_url(line, pattern=txt_pattern)
                 if name_url and name_url[0]:
                     name = name_url[0]["name"]
